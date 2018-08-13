@@ -3,17 +3,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class Move : NetworkBehaviour
+public class NetworkPlayerInput : NetworkBehaviour
 {
-    public float speed = 50f;
-    public Rigidbody rigid;
-    public GameObject cam;
-
+    public PlayerController controller;
+    public Orbit cam;
+    // Use this for initialization
     void Start()
     {
         if (!isLocalPlayer)
         {
-            cam.SetActive(false);
+            cam.gameObject.SetActive(false);
         }
     }
 
@@ -24,9 +23,7 @@ public class Move : NetworkBehaviour
         {
             float inputH = Input.GetAxis("Horizontal");
             float inputV = Input.GetAxis("Vertical");
-            Vector3 force = new Vector3(inputH, 0, inputV);
-            force = transform.TransformDirection(force);
-            rigid.AddForce(force * speed);
+            controller.Move(inputH, inputV);
         }
     }
 }

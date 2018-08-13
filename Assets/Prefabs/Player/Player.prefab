@@ -41,9 +41,7 @@ GameObject:
   - component: {fileID: 23941869001311002}
   - component: {fileID: 136965784905797440}
   - component: {fileID: 114313472477025552}
-  - component: {fileID: 54615161429362918}
-  - component: {fileID: 114518662499337814}
-  - component: {fileID: 114895370399129670}
+  - component: {fileID: 54645267176148556}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -89,7 +87,7 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1756450601281066}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4.5132456, y: 0.74156, z: -2.9026914}
+  m_LocalPosition: {x: 5, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 4052952442761228}
@@ -234,7 +232,7 @@ MeshFilter:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1766367029896956}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!54 &54615161429362918
+--- !u!54 &54645267176148556
 Rigidbody:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -242,7 +240,7 @@ Rigidbody:
   m_GameObject: {fileID: 1756450601281066}
   serializedVersion: 2
   m_Mass: 1
-  m_Drag: 5
+  m_Drag: 0
   m_AngularDrag: 0.05
   m_UseGravity: 1
   m_IsKinematic: 0
@@ -299,61 +297,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 50
-  rigid: {fileID: 54615161429362918}
+  rigid: {fileID: 54645267176148556}
   cam: {fileID: 1450882828226914}
---- !u!114 &114518662499337814
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 1756450601281066}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 372142912, guid: dc443db3e92b4983b9738c1131f555cb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_SceneId:
-    m_Value: 0
-  m_AssetId:
-    i0: 126
-    i1: 7
-    i2: 24
-    i3: 88
-    i4: 44
-    i5: 89
-    i6: 225
-    i7: 212
-    i8: 136
-    i9: 196
-    i10: 31
-    i11: 22
-    i12: 166
-    i13: 200
-    i14: 34
-    i15: 102
-  m_ServerOnly: 0
-  m_LocalPlayerAuthority: 1
---- !u!114 &114895370399129670
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 1756450601281066}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: -1768714887, guid: dc443db3e92b4983b9738c1131f555cb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_TransformSyncMode: 3
-  m_SendInterval: 0.1
-  m_SyncRotationAxis: 7
-  m_RotationSyncCompression: 0
-  m_SyncSpin: 0
-  m_MovementTheshold: 0.001
-  m_VelocityThreshold: 0.0001
-  m_SnapThreshold: 5
-  m_InterpolateRotation: 1
-  m_InterpolateMovement: 1
 --- !u!136 &136965784905797440
 CapsuleCollider:
   m_ObjectHideFlags: 1
