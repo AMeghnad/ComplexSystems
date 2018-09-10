@@ -15,6 +15,7 @@ public class CheckerBoard : MonoBehaviour
     }
     #endregion
 
+    #region Variables
     [Header("Game Logic")]
     public Piece[,] pieces = new Piece[8, 8]; // 2D Array - https://www.cs.cmu.edu/~mrmiller/15-110/Handouts/arrays2D.pdf
     public GameObject whitePiecePrefab, blackPiecePrefab; // Prefabs to spawn
@@ -32,42 +33,53 @@ public class CheckerBoard : MonoBehaviour
     private Vector2 mouseOver; // Mouse over value
     private Vector2 startDrag; // Position of start drag
     private Vector2 endDrag; // Position of end drag
+    #endregion
 
-    // Use this for initialization
+    #region Unity Events
     void Start()
     {
         // Generate the board on startup
         GenerateBoard();
     }
 
-    // Update is called once per frame
     void Update()
     {
         UpdateMouseOver();
 
-        // Is it white's turn or black's turn?
+        // Is is white's turn or black's turn?
         if (isWhite ? isWhiteTurn : !isWhiteTurn)
         {
             // Convert coordinates to int (again to be sure)
             int x = (int)mouseOver.x;
             int y = (int)mouseOver.y;
+
+            //Select the piece - void SelectPiece(int x, int y)
+            // If mousebutton down
+            if (Input.GetMouseButtonDown(0))
+            {
+                // SelectPiece(x,y)
+                SelectPiece(x, y);
+            }
+
             // Is there a selectedPiece currently?
             if (selectedPiece != null)
             {
                 // Update the drag position
                 UpdatePieceDrag(selectedPiece);
+
+                // If mouse up (mouse button released)
+                if (Input.GetMouseButtonUp(0))
+                {
+                    endDrag = mouseOver;
+                    // Move piece physically
+                    TryMove((int)startDrag.x, (int)startDrag.y, (int)endDrag.x, (int)endDrag.y);
+                }
             }
         }
     }
+    #endregion
 
-
-    void MovePiece(Piece pieceToMove, int x, int y)
-    {
-        // Move the piece to world coordinates using x and y + offsets
-        Vector3 coordinate = new Vector3(x, 0, y);
-        pieceToMove.transform.position = coordinate + boardOffset + pieceOffset;
-    }
-
+    #region Generators
     void GeneratePiece(bool isWhite, int x, int y)
     {
         GameObject prefab = isWhite ? whitePiecePrefab : blackPiecePrefab; // Which prefab is the piece?
@@ -77,7 +89,6 @@ public class CheckerBoard : MonoBehaviour
         pieces[x, y] = pieceScript; // Add piece component to array
         MovePiece(pieceScript, x, y); // Move the piece to correct world position
     }
-
     // Generate the board pieces
     void GenerateBoard()
     {
@@ -85,9 +96,13 @@ public class CheckerBoard : MonoBehaviour
         for (int y = 0; y < 3; y++)
         {
             // If the remainder of /2 is zero, it is true
+            // % = modulo - https://www.dotnetperls.com/modulo
             bool oddRow = (y % 2 == 0);
             // Loop through 8 and skip 2 every time
-            for (int x = 0; x < 8; x += 2)
+            for (int x = 0; // Initializer
+                 x < 8;  // Condition
+                 x += 2) // Incrementer / Iteration
+                         // For Loops - https://www.tutorialspoint.com/csharp/csharp_for_loop.htm
             {
                 // Generate piece here
                 int desiredX = oddRow ? x : x + 1;
@@ -109,30 +124,103 @@ public class CheckerBoard : MonoBehaviour
             }
         }
     }
+    #endregion
 
-    void UpdateMouseOver()
+    #region Modifiers
+    void SelectPiece(int x, int y)
     {
-        if (Camera.main == null)
+        // Check if x and y is outside of bounds of pieces array
+        if (x < 0 || x >= 8 || y < 0 || y >= 8)
         {
-            Debug.Log("Unable to find Main Camera");
+            // return - exit function
             return;
         }
 
-        Ray camRay = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-        if (Physics.Raycast(camRay, out hit, rayDistance, hitLayers))
+        // SET Piece p to pieces[x,y]
+        Piece p = pieces[x, y];
+        // If p exists and it is p's turn
+        if (p != null && p.isWhite == isWhite)
         {
-            // Convert world position to array index
-            mouseOver.x = (int)(hit.point.x - boardOffset.x);
-            mouseOver.y = (int)(hit.point.z - boardOffset.z);
+            // selectedPiece = p
+            selectedPiece = p;
+            // startDrag = mouseOver
+            startDrag = mouseOver;
         }
     }
 
-    void UpdatePieceDrag(Piece pieceToDrag)
+    // x1 = start x
+    // x2 = end x
+    // y1 = start y
+    // y2 = end y
+
+    void TryMove(int x1, int y1, int x2, int y2)
     {
+        // Are any indexes out of bounds?
+        if (x1 < 0 || x1 >= pieces.GetLength(0) || 
+            x2 < 0 || x2 >= pieces.GetLength(0) || 
+            y1 < 0 || y1 >= pieces.GetLength(1) || 
+            y2 < 0 || y2 >= pieces.GetLength(1))
+        {
+            return;
+        }
+
+        // Is there a selectedPiece?
+        if (selectedPiece != null)
+        {
+            // Move the piece
+            MovePiece(selectedPiece, x2, y2);
+            // Update array
+            Piece temp = pieces[x1, y1]; // save original to temp
+            pieces[x1, y1] = pieces[x2, y2]; // replace original with new
+            pieces[x2, y2] = temp; // replace second with temp
+            // Set selected to null
+            selectedPiece = null;
+        }
+    }
+
+    void MovePiece(Piece pieceToMove, int x, int y)
+    {
+        // Move the piece to world coordinates using x and y + offsets
+        Vector3 coordinate = new Vector3(x, 0f, y);
+        pieceToMove.transform.position = coordinate + boardOffset + pieceOffset;
+    }
+    #endregion
+
+    #region Updaters
+    void UpdateMouseOver()
+    {
+        // Does the main not camera exist?
         if (Camera.main == null)
         {
             Debug.Log("Unable to find Main Camera");
+            // Exit the whole function
+            return;
+        }
+
+        // Generate ray from mouse input to world
+        Ray camRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+        // Perform raycast
+        if (Physics.Raycast(camRay, out hit, rayDistance, hitLayers))
+        {
+            // Convert world position to an array index (by converting to int aswell)
+            mouseOver.x = (int)(hit.point.x - boardOffset.x);
+            mouseOver.y = (int)(hit.point.z - boardOffset.z);
+        }
+        else
+        {
+            // '-1' means nothing was selected
+            mouseOver.x = -1;
+            mouseOver.y = -1;
+        }
+    }
+    void UpdatePieceDrag(Piece pieceToDrag)
+    {
+        // Does the main camera not exist?
+        if (Camera.main == null)
+        {
+            Debug.Log("Unable to find Main Camera");
+            // Exit the functions
             return;
         }
 
@@ -146,4 +234,5 @@ public class CheckerBoard : MonoBehaviour
             pieceToDrag.transform.position = hit.point + Vector3.up;
         }
     }
+    #endregion
 }
