@@ -2,48 +2,126 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class CheckerBoard : MonoBehaviour
 {
     #region Singleton
     // "Instance" keyword variable can be accessed everywhere
-    public static CheckerBoard Instance;
+    public static CheckerBoard Instance { set; get; }
+
     private void Awake()
     {
-        // Set 'this' class as the first instance
         Instance = this;
     }
+
     #endregion
 
     #region Variables
     [Header("Game Logic")]
     public Piece[,] pieces = new Piece[8, 8]; // 2D Array - https://www.cs.cmu.edu/~mrmiller/15-110/Handouts/arrays2D.pdf
     public GameObject whitePiecePrefab, blackPiecePrefab; // Prefabs to spawn
+    public Transform chatMessageContainer;
+    public GameObject messagePrefab;
+    public GameObject highlightsContainer;
+    public Text nameTag;
+    public Transform canvas;
+    public CanvasGroup alertCanvas;
+
     // Offset values of the board
-    public Vector3 boardOffset = new Vector3(-4f, 0f, -4f);
-    public Vector3 pieceOffset = new Vector3(.5f, .125f, .5f);
-    public LayerMask hitLayers;
-    public float rayDistance = 25f;
+    private Vector3 boardOffset = new Vector3(-4f, 0f, -4f);
+    private Vector3 pieceOffset = new Vector3(.5f, .125f, .5f);
+    private LayerMask hitLayers;
+    private float rayDistance = 25f;
 
     private bool isWhite; // Is the current character white?
     private bool isWhiteTurn; // Is it white's turn?
     private bool hasKilled; // Has the player killed a piece?
+
+    [Header("UI")]
+    private float lastAlert;
+    private bool alertActive;
+    private bool gameIsOver;
+    private float winTime;
+
+    [Header("Checkers Logic")]
     private Piece selectedPiece; // Current selected piece
     private List<Piece> forcedPieces; // List storing the pieces that are forced moves
     private Vector2 mouseOver; // Mouse over value
     private Vector2 startDrag; // Position of start drag
     private Vector2 endDrag; // Position of end drag
+    private Client client;
     #endregion
 
     #region Unity Events
     void Start()
     {
+        client = FindObjectOfType<Client>();
+
+        foreach (Transform t in highlightsContainer.transform)
+        {
+            t.position = Vector3.down * 100;
+        }
+
+        if (client)
+        {
+            isWhite = client.isHost;
+            Alert(client.players[0].name + " versus " + client.players[1].name);
+
+            if (isWhite)
+            {
+                nameTag.text = client.players[0].name;
+            }
+            else
+            {
+                nameTag.text = client.players[1].name;
+            }
+        }
+        else
+        {
+            Alert("White player's turn");
+            foreach (Transform t in canvas)
+            {
+                t.gameObject.SetActive(false);
+            }
+
+            canvas.GetChild(0).gameObject.SetActive(true);
+        }
+
+        isWhiteTurn = true;
+        forcedPieces = new List<Piece>();
         // Generate the board on startup
         GenerateBoard();
     }
 
     void Update()
     {
+        if (gameIsOver)
+        {
+            if (Time.time - winTime > 3.0f)
+            {
+                Server server = FindObjectOfType<Server>();
+                Client client = FindObjectOfType<Client>();
+
+                if (server)
+                    Destroy(server.gameObject);
+
+                if (client)
+                    Destroy(client.gameObject);
+
+                SceneManager.LoadScene("MainMenu");
+            }
+
+            return;
+        }
+
+        foreach (Transform t in highlightsContainer.transform)
+        {
+            t.Rotate(Vector3.up * 90 * Time.deltaTime);
+        }
+
+        UpdateAlert();
         UpdateMouseOver();
 
         // Is is white's turn or black's turn?
@@ -56,25 +134,19 @@ public class CheckerBoard : MonoBehaviour
             //Select the piece - void SelectPiece(int x, int y)
             // If mousebutton down
             if (Input.GetMouseButtonDown(0))
-            {
-                // SelectPiece(x,y)
                 SelectPiece(x, y);
-            }
 
-            // Is there a selectedPiece currently?
             if (selectedPiece != null)
-            {
-                // Update the drag position
                 UpdatePieceDrag(selectedPiece);
 
-                // If mouse up (mouse button released)
-                if (Input.GetMouseButtonUp(0))
-                {
-                    endDrag = mouseOver;
-                    // Move piece physically
-                    TryMove((int)startDrag.x, (int)startDrag.y, (int)endDrag.x, (int)endDrag.y);
-                }
+            // If mouse up (mouse button released)
+            if (Input.GetMouseButtonUp(0))
+            {
+                endDrag = mouseOver;
+                // Move piece physically
+                TryMove((int)startDrag.x, (int)startDrag.y, (int)endDrag.x, (int)endDrag.y);
             }
+
         }
     }
     #endregion
@@ -89,6 +161,7 @@ public class CheckerBoard : MonoBehaviour
         pieces[x, y] = pieceScript; // Add piece component to array
         MovePiece(pieceScript, x, y); // Move the piece to correct world position
     }
+
     // Generate the board pieces
     void GenerateBoard()
     {
@@ -131,20 +204,29 @@ public class CheckerBoard : MonoBehaviour
     {
         // Check if x and y is outside of bounds of pieces array
         if (x < 0 || x >= 8 || y < 0 || y >= 8)
-        {
-            // return - exit function
             return;
-        }
 
         // SET Piece p to pieces[x,y]
         Piece p = pieces[x, y];
         // If p exists and it is p's turn
         if (p != null && p.isWhite == isWhite)
         {
-            // selectedPiece = p
-            selectedPiece = p;
-            // startDrag = mouseOver
-            startDrag = mouseOver;
+            if (forcedPieces.Count == 0)
+            {
+                // selectedPiece = p
+                selectedPiece = p;
+                // startDrag = mouseOver
+                startDrag = mouseOver;
+            }
+            else
+            {
+                // Look for the piece under our forced pieces list
+                if (forcedPieces.Find(fp => fp == p) == null)
+                    return;
+
+                selectedPiece = p;
+                startDrag = mouseOver;
+            }
         }
     }
 
@@ -155,10 +237,17 @@ public class CheckerBoard : MonoBehaviour
 
     void TryMove(int x1, int y1, int x2, int y2)
     {
+        forcedPieces = ScanForPossibleMove();
+
+        // Multiplayer Support
+        startDrag = new Vector2(x1, y1);
+        endDrag = new Vector2(x2, y2);
+        selectedPiece = pieces[x1, y1];
+
         // Are any indexes out of bounds?
-        if (x1 < 0 || x1 >= pieces.GetLength(0) || 
-            x2 < 0 || x2 >= pieces.GetLength(0) || 
-            y1 < 0 || y1 >= pieces.GetLength(1) || 
+        if (x1 < 0 || x1 >= pieces.GetLength(0) ||
+            x2 < 0 || x2 >= pieces.GetLength(0) ||
+            y1 < 0 || y1 >= pieces.GetLength(1) ||
             y2 < 0 || y2 >= pieces.GetLength(1))
         {
             return;
@@ -187,13 +276,38 @@ public class CheckerBoard : MonoBehaviour
     #endregion
 
     #region Updaters
+
+    public void Alert(string text)
+    {
+        alertCanvas.GetComponentInChildren<Text>().text = text;
+        alertCanvas.alpha = 1;
+        lastAlert = Time.time;
+        alertActive = true;
+    }
+
+    public void UpdateAlert()
+    {
+        float timeDifference = Time.time - lastAlert;
+        if (alertActive)
+        {
+            if (timeDifference > 1.5f)
+            {
+                alertCanvas.alpha = 1 - (timeDifference - 1.5f);
+
+                if (timeDifference > 2.5f)
+                {
+                    alertActive = false;
+                }
+            }
+        }
+    }
+
     void UpdateMouseOver()
     {
         // Does the main not camera exist?
-        if (Camera.main == null)
+        if (!Camera.main)
         {
             Debug.Log("Unable to find Main Camera");
-            // Exit the whole function
             return;
         }
 
@@ -217,10 +331,9 @@ public class CheckerBoard : MonoBehaviour
     void UpdatePieceDrag(Piece pieceToDrag)
     {
         // Does the main camera not exist?
-        if (Camera.main == null)
+        if (!Camera.main)
         {
             Debug.Log("Unable to find Main Camera");
-            // Exit the functions
             return;
         }
 
