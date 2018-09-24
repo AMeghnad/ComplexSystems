@@ -250,21 +250,79 @@ public class CheckerBoard : MonoBehaviour
             y1 < 0 || y1 >= pieces.GetLength(1) ||
             y2 < 0 || y2 >= pieces.GetLength(1))
         {
+            if (selectedPiece != null)
+                MovePiece(selectedPiece, x1, y1);
+
+            startDrag = Vector2.zero;
+            selectedPiece = null;
+            Highlight();
             return;
         }
 
         // Is there a selectedPiece?
         if (selectedPiece != null)
         {
-            // Move the piece
+            // If it has not moved
+            if (endDrag == startDrag)
+            {
+                // Move the piece
+                MovePiece(selectedPiece, x1, y1);
+                startDrag = Vector2.zero;
+                selectedPiece = null;
+                Highlight();
+                return;
+            }
+
+            // Check if it's a valid move
+            if (selectedPiece.ValidMove(pieces, x1, y1, x2, y2))
+            {
+                // Did we kill anything
+                // If this is a jump
+                if (Mathf.Abs(x2 - x1) == 2)
+                {
+                    Piece p = pieces[(x1 + x2) / 2, (y1 + y2) / 2] = null;
+                    DestroyImmediate(p.gameObject);
+                    hasKilled = true;
+                }
+            }
+
+            // Were we supposed to kill anything?
+            if (forcedPieces.Count != 0 && !hasKilled)
+            {
+                MovePiece(selectedPiece, x1, y1);
+                startDrag = Vector2.zero;
+                selectedPiece = null;
+                Highlight();
+                return;
+            }
+
+            pieces[x2, y2] = selectedPiece;
+            pieces[x1, y1] = null;
             MovePiece(selectedPiece, x2, y2);
-            // Update array
-            Piece temp = pieces[x1, y1]; // save original to temp
-            pieces[x1, y1] = pieces[x2, y2]; // replace original with new
-            pieces[x2, y2] = temp; // replace second with temp
-            // Set selected to null
-            selectedPiece = null;
+
+            EndTurn();
         }
+        else
+        {
+            MovePiece(selectedPiece, x1, y1);
+            startDrag = Vector2.zero;
+            selectedPiece = null;
+            Highlight();
+            return;
+        }
+    }
+
+    void Highlight()
+    {
+        foreach (Transform t in highlightsContainer.transform)
+        {
+            t.position = Vector3.down * 100;
+        }
+
+        if (forcedPieces.Count > 0)
+            highlightsContainer.transform.GetChild(0).transform.position = forcedPieces[0].transform.position + Vector3.down * 0.1f;
+        if (forcedPieces.Count > 1)
+            highlightsContainer.transform.GetChild(1).transform.position = forcedPieces[1].transform.position + Vector3.down * 0.1f;
     }
 
     void MovePiece(Piece pieceToMove, int x, int y)
@@ -273,9 +331,43 @@ public class CheckerBoard : MonoBehaviour
         Vector3 coordinate = new Vector3(x, 0f, y);
         pieceToMove.transform.position = coordinate + boardOffset + pieceOffset;
     }
+
+    void EndTurn()
+    {
+        int x = (int)endDrag.x;
+        int y = (int)endDrag.y;
+
+        // Promotions
+        if (selectedPiece != null)
+        {
+            if (selectedPiece.isWhite && !selectedPiece.isKing && y == 7)
+            {
+
+            }
+        }
+    }
     #endregion
 
     #region Updaters
+
+    List<Piece> ScanForPossibleMove()
+    {
+        forcedPieces = new List<Piece>();
+
+        // Check all the pieces
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                if (pieces[i, j] != null && pieces[i, j].isWhite == isWhiteTurn)
+                    if (pieces[i, j].IsForceToMove(pieces, i, j))
+                        forcedPieces.Add(pieces[i, j]);
+            }
+        }
+
+        Highlight();
+        return forcedPieces;
+    }
 
     public void Alert(string text)
     {

@@ -198,8 +198,7 @@ public class Server : MonoBehaviour
         switch (aData[0])
         {
             // Client connected.Syntax - "CWHO | clientName | isHost"
-            case:
-                "CWHO":
+            case "CWHO":
                 // Get the client's name
                 client.clientName = aData[1];
                 // Check if the client is a host
