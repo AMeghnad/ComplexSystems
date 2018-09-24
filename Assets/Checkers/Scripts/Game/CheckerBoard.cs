@@ -235,7 +235,7 @@ public class CheckerBoard : MonoBehaviour
     // y1 = start y
     // y2 = end y
 
-    void TryMove(int x1, int y1, int x2, int y2)
+    public void TryMove(int x1, int y1, int x2, int y2)
     {
         forcedPieces = ScanForPossibleMove();
 
