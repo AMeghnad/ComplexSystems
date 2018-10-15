@@ -91,7 +91,7 @@ public class Client : MonoBehaviour
                 CheckerBoard.Instance.TryMove(int.Parse(aData[1]), int.Parse(aData[2]), int.Parse(aData[3]), int.Parse(aData[4]));
                 break;
             case "SMSG":
-                CheckerBoard.Instance.chatMessageContainer(aData[1]);
+                //CheckerBoard.Instance.chatMessageContainer(aData[1]);
                 break;
             default:
                 break;
@@ -105,8 +105,8 @@ public class Client : MonoBehaviour
 
         players.Add(c);
 
-        if (players.Count == 2)
-            GameManager.Instance.StartGame();
+        if (players.Count == 2) { }
+            //GameManager.Instance.StartGame();
     }
 
     void OnApplicationQuit()
